@@ -3,10 +3,15 @@ import requests
 import random
 import os
 from dotenv import load_dotenv
+import threading
+from flask import Flask
+
+# Load environment variables from .env file
 load_dotenv()
 
+# Get the TOKEN from the environment variables
+TOKEN = os.getenv("TOKEN")  # Ensure you have your token in the .env file
 
-TOKEN = os.getenv("TOKEN")
 R34_API_URL = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1&limit=100&tags={tag}"
 
 def get_r34_image(tag):
@@ -28,7 +33,18 @@ def get_r34_image(tag):
     except requests.exceptions.RequestException as e:
         return f"❌ Error fetching data: {e}"
 
-# Setting up intents and client
+# Setting up Flask to run alongside the Discord bot
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Discord Bot is running!"
+
+# Function to run Flask in a separate thread
+def run_flask():
+    app.run(host='0.0.0.0', port=10000)  # Flask will run on port 10000
+
+# Setting up intents and client for Discord
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 
@@ -47,5 +63,9 @@ async def on_message(message):
         image_url = get_r34_image(tag)
         await message.channel.send(image_url)
 
-# Run the bot
+# Run Flask in a separate thread so it doesn't block the bot
+flask_thread = threading.Thread(target=run_flask)
+flask_thread.start()
+
+# Run the Discord bot
 client.run(TOKEN)
